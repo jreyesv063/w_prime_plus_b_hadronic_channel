@@ -1,0 +1,17 @@
+{
+    "2016": {
+        "ele": ["Ele27_WPTight_Gsf"], 
+        "mu": ["IsoMu24"],
+        "tau": ["PFMETNoMu120_PFMHTNoMu120_IDTight"]
+    }, 
+    "2017": {
+        "ele": ["Ele35_WPTight_Gsf"], 
+        "mu": ["IsoMu27"],
+        "tau": ["PFMETNoMu120_PFMHTNoMu120_IDTight"]
+    }, 
+    "2018": {
+        "ele": ["Ele32_WPTight_Gsf"], 
+        "mu": ["IsoMu24"],
+        "tau": ["PFMETNoMu120_PFMHTNoMu120_IDTight"]
+    }
+}
