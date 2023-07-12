@@ -550,6 +550,218 @@ def add_muonTriggerIso_weight(
         weightDown=values["down"],
     )
 
+# --------------------------------------------
+# Taus
+# https://github.com/cms-tau-pog/TauIDSFs#dm-dependent-sfs
+# DeepTau2017v2p1VSe: e -> tau_h fake rate SFs
+# DeepTau2017v2p1VSmu: mu -> tau_h fake rate SFs
+# DeepTau2017v2p1VSjet: By default, use the pT-dependent SFs with the 'pt' flag
+# tau_energy_scale: DM-dependent tau energy scale 
+# tau_trigger: Not applicable
+# e -> tau_h fake rate
+# mu -> tau_h fake rate
+# --------------------------------------------
+
+def add_tau_tauVSe(
+    weights: Type[Weights],
+    taus: ak.Array,
+    year: str,
+    mod: str = "",
+    wp: str = "Medium" 
+)
+"""
+-------------------------------------------------------------
+Correction parameters:
+        eta: [0.0 - 2.3)
+        
+        genmatch: 0 or 6 = unmatched or jet; 1 or 3 = electron; 2 or 4 = muon; 5 = real tau. (We will use 1)
+                0: no match
+                1, 2: prompt electrones/muons
+                3, 4: electrons/muons from tau decay
+                5: real tau
+                6: jets faking taus 
+        
+        wp: Loose, Medium, Tight, VLoose, VTight, VVLoose, VVTight. (We will use Medium)
+        
+        syst: down, nom, up. (We will use nom)
+
+Input parameters:
+
+        weights:
+            Weights object from coffea.analysis_tools
+        taus:
+            Tau collection
+        syst:
+            Type of scale factor {'nom'}
+        year:
+            Year of the dataset {'2016', '2017', '2018'}
+        mod:
+            Year modifier {'', 'APV'}
+        wp:
+            Working point {'Medium'}
+---------------------------------------------------------------
+"""
+
+#    groups = {"no_match": 0, "electrones": 1, "muons": 2, "electrons_tau_decay": 3, "muons_tau_decay": 4, "real_tau": 5, "faking_tau": 6} 
+
+    # correction set
+    cset = correctionlib.CorrectionSet.from_file(
+        get_pog_json(json_name="muon", year=year)
+    )
+
+    genmatch = 1
+
+    # tau absolute pseudorapidity range: [0, 2.3)
+    tau_eta = np.abs(ak.flatten(taus.eta))
+    tau_eta = np.clip(tau_eta, 0.0, 2.299)  
+
+    values = {}
+
+    values["nom"] = cset["DeepTau2017v2p1VSe"].evaluate(
+        tau_eta, genmatch, wp, "nom"
+    )
+    values["up"] = cset["DeepTau2017v2p1VSe"].evaluate(
+        tau_eta, genmatch, wp, "up"
+    )
+    values["down"] = cset["DeepTau2017v2p1VSe"].evaluate(
+            tau_eta, genmatch, wp, "down"
+    )
+
+    # number of objects per event
+    n = ak.num(taus)
+
+    # unflatten
+    for key in values:
+        values[key] = prod_unflatten(values[key], n)
+
+    weights.add(
+        name="tau_tauVSe",
+        weight=values["nom"],
+        weightUp=values["up"],
+        weightDown=values["down"],
+    )
+
+
+
+
+
+
+
+
+def add_tau_tauVSmu(
+    weights: Type[Weights],
+    taus: ak.Array,
+    year: str,
+    mod: str = "",
+    wp: str = "Tight" 
+):
+    # correction set
+    cset = correctionlib.CorrectionSet.from_file(
+        get_pog_json(json_name="tau", year=year)
+    )
+
+    genmatch = 2
+    
+    # tau absolute pseudorapidity range: [0, 2.3)
+    tau_eta = np.abs(ak.flatten(taus.eta))
+    tau_eta = np.clip(tau_eta, 0.0, 2.299)  
+
+    values = {}
+
+    values["nom"] = cset["DeepTau2017v2p1VSmu"].evaluate(
+        tau_eta, genmatch, wp, "nom"
+    )
+    values["up"] = cset["DeepTau2017v2p1VSmu"].evaluate(
+        tau_eta, genmatch, wp, "up"
+    )
+    values["down"] = cset["DeepTau2017v2p1VSmu"].evaluate(
+            tau_eta, genmatch, wp, "down"
+    )
+
+    # number of objects per event
+    n = ak.num(taus)
+
+    # unflatten
+    for key in values:
+        values[key] = prod_unflatten(values[key], n)
+
+    weights.add(
+        name="tau_tauVSmu",
+        weight=values["nom"],
+        weightUp=values["up"],
+        weightDown=values["down"],
+    )
+
+   
+
+def add_tau_tauVSjet(
+    weights: Type[Weights],
+    taus: ak.Array,
+    year: str,
+    mod: str = "",
+    wp: str = "Medium",
+    flag: str = "pt"
+):
+"""    
+-------------------------------------------------------------
+Correction parameters:
+        pt
+        dm: {0, 1, 2, 10, 11}  (Reconstructed tau decay mode)
+        genmatch: [0-6]
+        wp: {Loose, Medium, Tight, VLoose, VTight, VVLoose, VVTight, VVVLoose}
+        syst: {down, nom, up}
+        flag:  {dm, pt}. 'pt' = pT-dependent SFs, 'dm' = DM-dependent SFs (pT > 40 GeV)
+-------------------------------------------------------------
+"""
+    
+    # correction set
+    cset = correctionlib.CorrectionSet.from_file(
+        get_pog_json(json_name="tau", year=year)
+    )
+
+    genmatch = 6    # Faking taus.
+    
+    # tau pt
+    tau_pt = ak.flatten(taus.pt)
+
+    # reconstructed decay mode
+    """"
+
+    values = {}
+
+    values["nom"] = cset["DeepTau2017v2p1VSjet"].evaluate(
+        tau_pt, dm, genmatch, wp, "nom", flag
+    )
+    values["up"] = cset["DeepTau2017v2p1VSjet"].evaluate(
+        tau_pt, dm, genmatch, wp, "up", flag
+    )
+    values["down"] = cset["DeepTau2017v2p1VSjet"].evaluate(
+        tau_pt, dm, genmatch, wp, "down", flag
+    )
+
+    # number of objects per event
+    n = ak.num(taus)
+
+    # unflatten
+    for key in values:
+        values[key] = prod_unflatten(values[key], n)
+
+    weights.add(
+        name="tau_tauVSjet",
+        weight=values["nom"],
+        weightUp=values["up"],
+        weightDown=values["down"],
+    )
+
+
+
+
+
+
+
+
+
+    
 
 # ----------------------------------
 # met phi modulation
