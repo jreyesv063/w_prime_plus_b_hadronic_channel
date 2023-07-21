@@ -300,35 +300,101 @@ def single_leptonic_w(lepton_p4, w_mass_low, w_mass_up, met, leptonic_w_mass):
 
 
 # reconstruct resolved hadronic top ****************
-def hadronic_w(events, selected_jets_idx, w_mass_low, w_mass_up, hadronic_wA_list, hadronic_wB_list): 
+def hadronic_w(events, 
+               selected_jets_idx,            selected_idx['jets_cleaned']
+               w_mass_low, w_mass_up, 
+               hadronic_wA_list, 
+               hadronic_wB_list): 
+
+# --------------------------
+#  Hadronically decaying W has 2 jets (A and B)
+#  hadronic_wA_list = [] ; hadronic_wB_list = []
+# --------------------------
+    min_w_mass = 9999
+    w_jet1 = -1
+    w_jet2 = -1
+    
+    selected_jets_idx1 = []
+    selected_jets_idx1 = selected_jets_idx    # Copy of jet events
+
+    # reconstructed mass between the two w: all the couple combinations
+    two_w_jets = ak.combinations(selected_jets_idx1, 2, replacement=False, fields = ["w1", "w2"])          # https://awkward-array.org/doc/main/reference/generated/ak.combinations.html
+    w_mass = two_w_jets.mass()
+    if np.abs(w_mass - w_mass_pdg) > min_w_mass:
+        if w_mass_low < w_mass < w_mass_up:
+            min_w_mass = np.abs(w_mass - w_mass_pdg)
+            w_jet1 = two_w_jets.w1
+            w_jet2 = two_w_jets.w2
+
+    if w_jet1 != -1 and w_jet2 != -1:
+        hadronic_wA_list.append(w_jet1)
+        hadronic_wB_list.append(w_jet2)
+        selected_jets_idx1.remove(w_jet1)
+        selected_jets_idx1.remove(w_jet2)
+
+    return hadronic_wA, hadronic_wB
+
+
+# reconstruct hadronic top *****************
+def hadronic_top(events, 
+                 selected_jets_idx,          # selected_idx['jets_cleaned']
+                 selected_bjets_idx,         # selected_idx['jetsB_L']
+                 top_sigma, 
+                 w_sigma, 
+                 w_mass_low, w_mass_up, 
+                 top_mass_low, top_mass_up, 
+                 chi2_range, 
+                 all_combinations_results):
+
+# --------------------------------
+# all_combinations_results:
+# all_combinations_results = {'top':[],'top_AK4jets':[],'w':[],'top_topology_decay':[],'chi2':[]}
+# --------------------------------
+
+    hadronic_wA_list = []  
+    hadronic_wB_list = []
+
+    hadronic_w(events, selected_jets_idx, w_mass_low, w_mass_up, hadronic_wA_list, hadronic_wB_list)
+
+    hadronic_w_b_idx = []
+    chi2_hadronic = []
+
+    if (len(hadronic_wA_list) > 0 and len(hadronic_wB_list) > 0):
+        hadronic_w_p4 = hadronic_wA_list + hadronic_wB_list        # Reconstructed top (using the two wjets)
+        
+        if ((selected_bjets_idx != hadronic_wA_list) and (selected_bjets_idx != hadronic_wB_list)):
+            b_w_mass =  (selected_bjets_idx + hadronic_w_p4).mass   
+
+        if (top_mass_low < b_w_mass < top_mass_up):
+            chi2_a = chi2(b_w_mass, hadronic_w_mass, top_sigma, w_sigma)
+
+            if (chi2_a < chi2_range):
+                hadronic_w_b_idx.append(selected_bjets_idx)
+                chi2_hadronic.append(chi2_a)
+
+    if (len(chi2_hadronic) > 0):
+        sorted_chi2_hadronic, sorted_hadronic_b = pick_1b(chi2_hadronic, hadronic_w_b_idx)
+        
+        hadronic_top_idx = [hadronic_wA_list, hadronic_wB_list, sorted_hadronic_b[0]]
+        
+        add_results(sorted_chi2_hadronic[0], 
+                    hadronic_top_idx, 
+                    hadronic_w_p4, 
+                    sorted_hadronic_b[0],
+                    all_combinations_results, 
+                    2)
+
 
 # reconstruct resolved leptonic top
 def single_leptonic_top(events, 
                         selected_muon_idx,         # selected_idx['muon']
                         selected_electron_idx,     # selected_idx['electron']
                         selected_bjets_idx,        # selected_idx['jetsB_L']
-                        top_sigma,                 # leptonic_top_sigma
-                        w_sigma,                   # leptonic_w_sigma
-                        w_mass_low, w_mass_up,     # leptonic_w_mass_low(top)
-                        top_mass_low, top_mass_up, # leptonic_top_mass_low(top)
-                        chi2_range,                # chi2_range
-                        all_combinations_results   # all_combinations_results -> Lista de resultados
+                        top_sigma,                 
+                        w_sigma,                   
+                        w_mass_low, w_mass_up,     
+                        top_mass_low, top_mass_up, 
+                        chi2_range,                
+                        all_combinations_results   
                        ): 
-
-
-# reconstruct hadronic top *****************
-def hadronic_top(events, 
-                 selected_jets_idx, 
-                 selected_bjets_idx, 
-                 top_sigma, 
-                 w_sigma, 
-                 w_mass_low, 
-                 w_mass_up, 
-                 top_mass_low,
-                 top_mass_up, 
-                 chi2_range, 
-                 all_combinations_results):
-
-
-
-
+                                     
