@@ -1,3 +1,8 @@
+import awkward as ak
+import numpy as np
+from coffea.analysis_tools import PackedSelection
+
+
 # -------------------------
 #   Top tagger 
 # -------------------------
