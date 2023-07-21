@@ -1,6 +1,9 @@
 import numpy as np
 
 
-def TLorentzVector(t, x, y, z):    
-    return np.array([t,x,y,z])
+def TLorentzVector(E, px, py, pz):
+    
+    TLorentz = np.array([E, px, py, pz])
+   
+    return TLorentz
     
