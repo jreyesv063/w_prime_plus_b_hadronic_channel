@@ -18,338 +18,322 @@
 """
 
 
-def select_muons(events: ak.Array):
-
+def select_muons(events: ak.Array, selected_idx):
+    
+    selections_muons = PackedSelection()
+    
+    Muon = events.Muon
+    
     good_muons = (
-        (events.Muon.pt >= 20)
-        & (np.abs(events.Muon) <= 2.4)
-        & (events.Muon.tightID)
-        & (events.Muon.pfRelIso04_all <= 0.15)
+        (Muon.pt < 20)
+        & (np.abs(Muon.eta) > 2.4)
+        & (Muon.tightId)
+        & (Muon.pfRelIso04_all > 0.15)
     )
     
     n_good_muons = ak.sum(good_muons, axis=1)
-    muons = ak.firsts(events.Muon[good_muons])
-       
-    return muons
+    muons = ak.firsts(Muon[good_muons])
+    
+    
+    selections_muons.add("one_muon", n_good_muons == 1)  
+        
+    # define the event selection criteria
+    regions = {
+        "mu": ["one_muon"],
+    }
+    
+    Filtered = selections_muons.all(*regions["mu"])                                 
+    selected_idx['muon'].append(Filtered)
+                                
+    return selected_idx['muon']
     
     
     
         
 
-def select_electrons(events: ak.Array):
+def select_electrons(events: ak.Array, selected_idx):
+
+    selections_electrons = PackedSelection()
+    
+    Muon = events.Muon
+    Electron = events.Electron
+
 
     good_electrons = (
-        (events.Electron.pt >= 20)
-        & (np.abs(events.Electron) <= 2.5)
-        & (events.Electron.cutBased >= 1)
-        & (is_overlap(events,0.4))
+        (Electron.pt < 20)
+        & (np.abs(Electron.eta) > 2.5)
+        & (Electron.cutBased < 1)
     )
-    
-    n_good_electrons = ak.sum(good_electrons, axis=1)
-    electrons = ak.firsts(events.Muon[good_electrons])
-    
-    
-    return electrons
 
-
-    electron_muon_dr = select_muons(events).delta_r(select_electrons(events))    # Overlap electron with
-
-		
-
-def is_overlap(events, value):
-    if select_muons(events).delta_r(select_electrons(events) > value: return True
-    else: return False
-
-
-
-
-def select_top_jets(events: ak.Array, year: str, mod: str = ""):
-
-
-    types_topjets = {"jetsTop_L": [], "jetsTop_M": [], "jetsTop_T": []}
-    
-    
-    jet_id = 10000 #Recommendation in https://twiki.cern.ch/twiki/bin/view/CMS/JetID#Recommendations_for_13_TeV_data and https://twiki.cern.ch/twiki/bin/view/CMS/JetID13TeVUL ("Please note: For AK8 jets, the corresponding (CHS or PUPPI) AK4 jet ID should be used.")
-    pNet_id = 10000 #Recommendation in https://twiki.cern.ch/twiki/bin/view/CMS/ParticleNetTopWSFs
-    
-    if year + mod = '2018': 
-        jet_id = 2
-        pNet_id_L = 0.58
-        pNet_id_M = 0.80
-        pNet_id_T = 0.97
-    elif year + mod= '2017': 
-        jet_id = 2
-        pNet_id_L = 0.58
-        pNet_id_M = 0.80
-        pNet_id_T = 0.97
-    elif year + mod = '2016': 
-        jet_id = 3
-        pNet_id_L = 0.50
-        pNet_id_M = 0.73 
-        pNet_id_T = 0.96
-    elif year + mod = '2016APV':
-        jet_id = 3
-        pNet_id_L = 0.49
-        pNet_id_M = 0.74
-        pNet_id_T = 0.96
-    else: print('Check the year parameter entered.')
-
-    
-    good_fatjets_L(
-        (events.FatJet.pt >= 300)
-        & (np.abs(events.FatJet.eta) < 2.4)
-        & (events.FatJet.jetId >= jet_id)   
- #       & (events.FatJet.delta_r(select_muons(events)) > 0.8)
- #       & (events.FatJet.delta_r(select_electrons(events)) > 0.8)
-        & (events.FatJet.particleNet_TvsQCD >= pNet_id_L)
         
-    )
+    n_good_electrons = ak.sum(good_electrons, axis=1) 
+    overlap_e_mu = ak.firsts(Muon).delta_r(ak.firsts(Electron))
+    
+    
+    selections_electrons.add("one_electron", n_good_electrons == 1)  
+    selections_electrons.add("electron_muon_dr", overlap_e_mu > 0.4)
+    
+    
+    # define the event selection criteria
+    regions = {
+        "ele": ["one_electron", "electron_muon_dr"],
+    }
         
-    n_good_jetsTop_L = ak.sum(good_fatjets_L, axis=1)
-    jetsTop_L = ak.firsts(events.FatJet[good_fatjets_L])
-    types_topjets['jetsTop_L'].append(jetsTop_L)
-
-
-
-####
-
-    good_fatjets_M(
-        (events.FatJet.pt >= 300)
-        & (np.abs(events.FatJet.eta) < 2.4)
-        & (events.FatJet.jetId >= jet_id)   
- #       & (events.FatJet.delta_r(select_muons(events)) > 0.8)
- #       & (events.FatJet.delta_r(select_electrons(events)) > 0.8)
-        & (events.FatJet.particleNet_TvsQCD >= pNet_id_M)
-        
-    )
-        
-    n_good_jetsTop_M = ak.sum(good_fatjets_M, axis=1)
-    jetsTop_M = ak.firsts(events.FatJet[good_fatjets_M])
-    types_topjets['jetsTop_M'].append(jetsTop_M)
+    Filtered = selections_electrons.all(*regions["ele"])                                 
+    selected_idx['electron'].append(Filtered)
     
-    
-####
+    return selected_idx['electron']
 
-    good_fatjets_T(
-        (events.FatJet.pt >= 300)
-        & (np.abs(events.FatJet.eta) < 2.4)
-        & (events.FatJet.jetId >= jet_id)   
- #       & (events.FatJet.delta_r(select_muons(events)) > 0.8)
- #       & (events.FatJet.delta_r(select_electrons(events)) > 0.8)
-        & (events.FatJet.particleNet_TvsQCD >= pNet_id_T)
-        
-    )
-        
-    n_good_jetsTop_T = ak.sum(good_fatjets_T, axis=1)
-    jetsTop_T = ak.firsts(events.FatJet[good_fatjets_T])
-    types_topjets['jetsTop_T'].append(jetsTop_T)
-    
-    return types_topjets
-    
-    
-def select_w_jets(event, year, selected_idx):
-
-    types_wjets = {"jetsW_L": [], "jetsW_M": [], "jetsW_T": []}
+##########################################
 
 
-    jet_id = 10000 #Recommendation in https://twiki.cern.ch/twiki/bin/view/CMS/JetID#Recommendations_for_13_TeV_data and https://twiki.cern.ch/twiki/bin/view/CMS/JetID13TeVUL ("Please note: For AK8 jets, the corresponding (CHS or PUPPI) AK4 jet ID should be used.")
-    pNet_id = 10000 #Recommendation in https://twiki.cern.ch/twiki/bin/view/CMS/ParticleNetTopWSFs
-
-    if year + mod = '2018': 
-        jet_id = 2
-        pNet_id_L = 0.70
-        pNet_id_M = 0.94
-        pNet_id_T = 0.98
-    elif year + mod= '2017': 
-        jet_id = 2
-        pNet_id_L = 0.71
-        pNet_id_M = 0.94
-        pNet_id_T = 0.98
-    elif year + mod = '2016': 
-        jet_id = 3
-        pNet_id_L = 0.67
-        pNet_id_M = 0.93 
-        pNet_id_T = 0.97
-    elif year + mod = '2016APV':
-        jet_id = 3
-        pNet_id_L = 0.68
-        pNet_id_M = 0.94
-        pNet_id_T = 0.97
-    else: print('Check the year parameter entered.')
-    
+def select_top_jets(events: ak.Array, year: str, mod: str, selected_idx):
+   
+    selections_top_jets = PackedSelection()
  
-     good_wjets_L(
-        (events.FatJet.pt >= 200)
-        & (np.abs(events.FatJet.eta) < 2.4)
-        & (events.FatJet.jetId >= jet_id)   
- #       & (events.FatJet.delta_r(select_muons(events)) > 0.8)
- #       & (events.FatJet.delta_r(select_electrons(events)) > 0.8)
- #       & (events.FatJet.delta_r(select_top_jets(events, year, mod)) > 0.8)   
-       
-    )
-        
-    n_good_wjetsTop_L = ak.sum(good_wjets_L, axis=1)
-    wjetsTop_L = ak.firsts(events.FatJet[good_wjets_L])
-    types_wjets['jetsW_L'].append(wjetsTop_L)
 
-
-
-####
-
-    good_wjets_M(
-        (events.FatJet.pt >= 300)
-        & (np.abs(events.FatJet.eta) < 2.4)
-        & (events.FatJet.jetId >= jet_id)   
- #       & (events.FatJet.delta_r(select_muons(events), 0.8))
- #       & (events.FatJet.delta_r(select_electrons(events), 0.8))  
- #       & (events.FatJet.delta_r(select_top_jets(events, year, mod)) > 0.8)  
-    )
-        
-    n_good_wjetsTop_M = ak.sum(good_wjets_M, axis=1)
-    wjetsTop_M = ak.firsts(events.FatJet[good_fatjets_M])
-    types_wjets['jetsW_M'].append(wjetsTop_M)
+    FatJet = events.FatJet
+    Muon = events.Muon
+    Electron = events.Electron
     
     
-####
-
-    good_wjets_T(
-        (events.FatJet.pt >= 300)
-        & (np.abs(events.FatJet.eta) < 2.4)
-        & (events.FatJet.jetId >= jet_id)   
- #       & (events.FatJet.delta_r(select_muons(events), 0.8))
- #       & (events.FatJet.delta_r(select_electrons(events), 0.8))     
- #       & (events.FatJet.delta_r(select_top_jets(events, year, mod)) > 0.8)  
-    )
-        
-    n_good_wjetsTop_T = ak.sum(good_wjets_T, axis=1)
-    wjetsTop_T = ak.firsts(events.FatJet[good_wjets_T])
-    types_wjets['jetsW_T'].append(wjetsTop_T)
+    jet_id = 10000 #Recommendation in https://twiki.cern.ch/twiki/bin/view/CMS/JetID#Recommendations_for_13_TeV_data and https://twiki.cern.ch/twiki/bin/view/CMS/JetID13TeVUL ("Please note: For AK8 jets, the corresponding (CHS or PUPPI) AK4 jet ID should be used.")
+    pNet_id = 10000 #Recommendation in https://twiki.cern.ch/twiki/bin/view/CMS/ParticleNetTopWSFs
     
-    return types_wjets
+    # Loose: L subindex.
+    # Medium: M subindex.
+    # Tight: T subindex.
+    # Nomenclature: "year": [jetd_id, pNet_id_L, pNet_id_M, pNet_id_T]
+    
+    constants_as_fuction_wp = {
+                                "2016" : [3, 0.50, 0.73, 0.96], 
+                                "2016APV" : [3, 0.49, 0.74, 0.96], 
+                                "2017": [2, 0.58, 0.80, 0.97], 
+                                "2018": [2, 0.58, 0.80, 0.97]
+                            }
+    
+
+    jet_id = constants_as_fuction_wp[year + mod][0]
+    pNet_id_L = constants_as_fuction_wp[year + mod][1]
+    pNet_id_M = constants_as_fuction_wp[year + mod][2]
+    pNet_id_T = constants_as_fuction_wp[year + mod][3]
+    
+    
+    
+    good_fatjets = (
+        (FatJet.pt < 300)
+        & (np.abs(FatJet.eta) >= 2.4) #This is the recommendation for all the fat jets (there are not reconstructed forward fat jets)
+        & (FatJet.jetId < jet_id)   
+    )
+    
+    n_good_fatjets = ak.sum(good_fatjets, axis=1)
+    
+    
+    leading_fatjets = ak.firsts(FatJet[good_fatjets])
+    overlap_fatjets_electron = ak.firsts(FatJet).delta_r(ak.firsts(Electron))
+    overlap_fatjets_muon = ak.firsts(FatJet).delta_r(ak.firsts(Muon))
+    
+    
+    selections_top_jets.add("fatjets_electron_dr", overlap_fatjets_electron > 0.8)
+    selections_top_jets.add("fatjets_muon_dr", overlap_fatjets_muon > 0.8)              
+    selections_top_jets.add("leading_fatjets", n_good_fatjets == 1)
+    selections_top_jets.add("id_L", FatJet.particleNet_TvsQCD < pNet_id_L)
+    selections_top_jets.add("id_M", FatJet.particleNet_TvsQCD < pNet_id_M)
+    selections_top_jets.add("id_T", FatJet.particleNet_TvsQCD < pNet_id_T)
+    
+        
+    # define selection regions for each channel
+    regions = {  
+        "Loose": ["leading_fatjets", "fatjets_electron_dr", "fatjets_muon_dr", "id_L"],
+        "Medium": ["leading_fatjets", "fatjets_electron_dr", "fatjets_muon_dr", "id_M"],
+        "Tight": ["leading_fatjets", "fatjets_electron_dr", "fatjets_muon_dr", "id_T"],
+    }
+    
+    Filtered_L = selections_top_jets.all(*regions["Loose"])                                 
+    selected_idx['jetsTop_L'].append(Filtered_L)
+    
+    Filtered_M = selections_top_jets.all(*regions["Medium"])                                 
+    selected_idx['jetsTop_M'].append(Filtered_M)
+    
+    Filtered_T = selections_top_jets.all(*regions["Tight"])                                 
+    selected_idx['jetsTop_T'].append(Filtered_T)
+    
+    return selected_idx['jetsTop_L'], selected_idx['jetsTop_M'], selected_idx['jetsTop_T']
+
+
+
+
+def select_w_jets(events: ak.Array, year: str, mod: str, selected_idx):
+    
+    selections_w_jets = PackedSelection()
+ 
+    FatJet = events.FatJet
+    Muon = events.Muon
+    Electron = events.Electron
+    
+
+    jet_id = 10000 #Recommendation in https://twiki.cern.ch/twiki/bin/view/CMS/JetID#Recommendations_for_13_TeV_data and https://twiki.cern.ch/twiki/bin/view/CMS/JetID13TeVUL ("Please note: For AK8 jets, the corresponding (CHS or PUPPI) AK4 jet ID should be used.")
+    pNet_id = 10000 #Recommendation in https://twiki.cern.ch/twiki/bin/view/CMS/ParticleNetTopWSFs
+    
+    # Loose: L subindex.
+    # Medium: M subindex.
+    # Tight: T subindex.
+    # Nomenclature: "year": [jetd_id, pNet_id_L, pNet_id_M, pNet_id_T]
+    
+    constants_as_fuction_wp = {
+                                "2016" : [3, 0.68, 0.94, 0.97], 
+                                "2016APV" : [3, 0.67, 0.93, 0.97], 
+                                "2017": [2, 0.71, 0.94, 0.98], 
+                                "2018": [2, 0.70, 0.94, 0.98]
+                            }
+
+
+    jet_id = constants_as_fuction_wp[year + mod][0]
+    pNet_id_L = constants_as_fuction_wp[year + mod][1]
+    pNet_id_M = constants_as_fuction_wp[year + mod][2]
+    pNet_id_T = constants_as_fuction_wp[year + mod][3]
     
    
+    good_wjets = (
+        (FatJet.pt < 200)
+        & (np.abs(FatJet.eta) >= 2.4) #This is the recommendation for all the fat jets (there are not reconstructed forward fat jets)
+        & (FatJet.jetId < jet_id)   
+    )
+    
+    n_good_wjets = ak.sum(good_wjets, axis=1) 
+    leading_wjets = ak.firsts(FatJet[good_wjets])
+    
+    
+    overlap_wjets_electron = ak.firsts(FatJet).delta_r(ak.firsts(Electron)) # Overlap with electrons
+    overlap_wjets_muon = ak.firsts(FatJet).delta_r(ak.firsts(Muon))         # Overlap with muons
+    overlap_wjets_fatjet = ak.firsts(FatJet).delta_r(ak.firsts(Muon))       # Overlap with fatjet  (pendiente)
+    
+   
+   
+    selections_w_jets.add("leading_wjets", n_good_wjets == 1)
+    selections_w_jets.add("wjets_electron_dr", overlap_wjets_electron > 0.8)
+    selections_w_jets.add("wjets_muon_dr", overlap_wjets_muon > 0.8)
+    selections_w_jets.add("wjets_fatjet_dr", overlap_wjets_fatjet > 0.8)
+    selections_w_jets.add("id_L", FatJet.particleNet_TvsQCD < pNet_id_L)
+    selections_w_jets.add("id_M", FatJet.particleNet_TvsQCD < pNet_id_M)
+    selections_w_jets.add("id_T", FatJet.particleNet_TvsQCD < pNet_id_T)
+    
+
+    
+    # define selection regions for each channel
+    regions = {
+        "Loose": ["leading_wjets", "wjets_electron_dr", "wjets_muon_dr", "wjets_fatjet_dr", "id_L"],
+        "Medium": ["leading_wjets", "wjets_electron_dr", "wjets_muon_dr", "wjets_fatjet_dr", "id_M"], 
+        "Tight": ["leading_wjets", "wjets_electron_dr", "wjets_muon_dr",  "wjets_fatjet_dr", "id_T"],
+    }
+    
+    
+    
+    Filtered_L = selections_w_jets.all(*regions["Loose"])                                 
+    selected_idx['jetsW_L'].append(Filtered_L)
+    
+    Filtered_M = selections_w_jets.all(*regions["Medium"])                                 
+    selected_idx['jetsW_M'].append(Filtered_M)
+    
+    Filtered_T = selections_w_jets.all(*regions["Tight"])                                 
+    selected_idx['jetsW_T'].append(Filtered_T)
+    
+    return selected_idx['jetsW_L'], selected_idx['jetsW_M'], selected_idx['jetsW_T']
+
+
+
+def select_jets(events: ak.Array, year: str, mod: str, selected_idx):
+    
+    selections_jets = PackedSelection()
  
+    FatJet = events.FatJet
+    Muon = events.Muon
+    Electron = events.Electron
+    Jet = events.Jet
     
-def select_jets(event, year, selected_idx):
-    types_jets = {'jets_noCleaned_against_boostedJets': [],  'jets_cleaned': [], 'jetsB_L': [], 'jetsB_M': [], 'jetsB_T': [] }
-    
-    jet_id = 10000 #Recommendation in https://twiki.cern.ch/twiki/bin/view/CMS/JetID#Recommendations_for_13_TeV_data and https://twiki.cern.ch/twiki/bin/view/CMS/JetID13TeVUL ("Please note: For AK8 jets, the corresponding (CHS or PUPPI) AK4 jet ID should be used.")
-    bjet_id = 10000 #Recommendation in https://twiki.cern.ch/twiki/bin/viewauth/CMS/BtagRecommendation
-    bjet_eta = -1
+
+    pNet_id = 10000 #Recommendation in https://twiki.cern.ch/twiki/bin/view/CMS/ParticleNetTopWSFs
+   
     jet_eta = -1
-
+    jet_id = 10000 #Recommendation in https://twiki.cern.ch/twiki/bin/view/CMS/JetID#Recommendations_for_13_TeV_data and https://twiki.cern.ch/twiki/bin/view/CMS/JetID13TeVUL ("Please note: For AK8 jets, the corresponding (CHS or PUPPI) AK4 jet ID should be used.")
+    b_jet_eta = -1
+    b_jet_id = 10000 #Recommendation in https://twiki.cern.ch/twiki/bin/viewauth/CMS/BtagRecommendation
+        
+    # Loose: L subindex.
+    # Medium: M subindex.
+    # Tight: T subindex.
+    # Nomenclature: "year": [jetd_eta, jet_id_T, b_jet_eta, b_jet_id_L, b_jet_id_M, b_jet_id_T]
     
-    if year + mod = '2018': 
-        jet_id = 2
-        jet_eta = 2.5
-        
-        bjet_eta = 2.5
-        bjet_id = 0.0490
-        bjet_id = 0.2783
-        bjet_id = 0.7100
-        
-    elif year + mod= '2017': 
-        jet_id = 2
-        jet_eta = 2.5
-        
-        bjet_eta = 2.5
-        bjet_id = 0.0532
-        bjet_id = 0.3040
-        bjet_id = 0.7476
+    constants_as_fuction_wp = {
+                                "2016" : [2.4, 3, 2.4, 0.0480, 0.2489, 0.6377], 
+                                "2016APV" : [2.4, 3, 2.4, 0.0508, 0.2598, 0.6502], 
+                                "2017": [2.5, 2, 2.5, 0.0532, 0.3040, 0.7476], 
+                                "2018": [2.5, 2, 2.5, 0.0490, 0.2783, 0.7100]
+                            } 
 
-    elif year + mod = '2016': 
-        jet_id = 3
-        jet_eta = 2.4
-        
-        bjet_eta = 2.4
-        bjet_id = 0.0480
-        bjet_id = 0.2489
-        bjet_id = 0.6377
-
-    elif year + mod = '2016APV':
-        jet_id = 3
-        jet_eta = 2.4
-        
-        bjet_eta = 2.4
-        bjet_id = 0.0508
-        bjet_id = 0.2598
-        bjet_id = 0.6502
-
-    else: print('Check the year parameter entered.')
+    jet_eta = constants_as_fuction_wp[year + mod][0]
+    jet_id_T = constants_as_fuction_wp[year + mod][1]
+    b_jet_eta = constants_as_fuction_wp[year + mod][2]
+    b_jet_id_L = constants_as_fuction_wp[year + mod][3]
+    b_jet_id_M = constants_as_fuction_wp[year + mod][4]
+    b_jet_id_T = constants_as_fuction_wp[year + mod][5]
     
-   
-     good_jets_no_cleaned(
-        (events.Jet.pt >= 20)
-        & (np.abs(events.Jet.eta) < jet_eta)
-        & (events.Jet.jetId >= jet_id)   
- #       & (events.Jet.delta_r(select_muons(events)) > 0.4)
- #       & (events.Jet.delta_r(select_electrons(events)) > 0.4)      
+    good_jets = (
+        (FatJet.pt < 20)
+        & (np.abs(Jet.eta) > jet_eta) 
+        & (Jet.jetId < jet_id)   
     )
-        
-    n_good_no_jets_cleaned = ak.sum(good_jetsv_cleaned, axis=1)
-    jets_no_cleaned = ak.firsts(events.FatJet[good_jets_no_cleaned])
-    types_jets_no_cleaned['jets_noCleaned_against_boostedJets'].append(jets_no_cleaned)
-
-
-
-    
-     good_jets_cleaned(
-        (events.Jet.pt >= 20)
-        & (np.abs(events.Jet.eta) < jet_eta)
-        & (events.Jet.jetId >= jet_id)   
- #       & (events.Jet.delta_r(select_muons(events)) > 0.4)
- #       & (events.Jet.delta_r(select_electrons(events)) > 0.4)     
- #       & (events.FatJet.delta_r(select_top_jets(events, year, mod)) > 0.8)  
- #       & (events.FatJet.delta_r(select_w_jets(events, year, mod)) > 0.8)   
-    )
-        
-    n_good_jets_cleaned = ak.sum(good_jets_cleaned, axis=1)
-    jets_cleaned = ak.firsts(events.FatJet[good_jets_cleaned])
-    types_jets_cleaned['jets_cleaned'].append(jets_cleaned)
-
-
-     good_bjets_L(
-        (events.Jet.pt >= 20)
-        & (np.abs(events.Jet.eta) < bjet_eta)
-        & (events.Jet.btagDeepFlavB >= bjet_id)   
- #       & (events.Jet.delta_r(select_muons(events)) > 0.4)
- #       & (events.Jet.delta_r(select_electrons(events)) > 0.4)     
- #       & (events.FatJet.delta_r(select_top_jets(events, year, mod)) > 0.8)  
- #       & (events.FatJet.delta_r(select_w_jets(events, year, mod)) > 0.8)   
-    )
-    n_good_bjets_L = ak.sum(good_bjets_cleaned, axis=1)
-    bjets_L = ak.firsts(events.FatJet[good_bjets_L])
-    types_bjets_cleaned['jetsB_L'].append(bjets_L)
-
-
-
-     good_bjets_M(
-        (events.Jet.pt >= 20)
-        & (np.abs(events.Jet.eta) < bjet_eta)
-        & (events.Jet.btagDeepFlavB >= bjet_id)   
- #       & (events.Jet.delta_r(select_muons(events)) > 0.4)
- #       & (events.Jet.delta_r(select_electrons(events)) > 0.4)     
- #       & (events.FatJet.delta_r(select_top_jets(events, year, mod)) > 0.8)  
- #       & (events.FatJet.delta_r(select_w_jets(events, year, mod)) > 0.8)   
-    )
-    n_good_bjets_M = ak.sum(good_bjets_cleaned, axis=1)
-    bjets_M = ak.firsts(events.FatJet[good_bjets_M])
-    types_bjets_cleaned['jetsB_M'].append(bjets_M)
-    
-  
-     good_bjets_T(
-        (events.Jet.pt >= 20)
-        & (np.abs(events.Jet.eta) < bjet_eta)
-        & (events.Jet.btagDeepFlavB >= bjet_id)   
- #       & (events.Jet.delta_r(select_muons(events)) > 0.4)
- #       & (events.Jet.delta_r(select_electrons(events)) > 0.4)     
- #       & (events.FatJet.delta_r(select_top_jets(events, year, mod)) > 0.8)  
- #       & (events.FatJet.delta_r(select_w_jets(events, year, mod)) > 0.8)   
-    )
-    n_good_bjets_T = ak.sum(good_bjets_cleaned, axis=1)
-    bjets_T = ak.firsts(events.FatJet[good_bjets_T])
-    types_bjets_cleaned['jetsB_T'].append(bjets_T)  
-    
+      
+    n_good_jets = ak.sum(good_jets, axis=1) 
+    leading_jets = ak.firsts(Jet[good_jets])
     
 
-    return types_jets
+    overlap_jets_electron = ak.firsts(Jet).delta_r(ak.firsts(Electron)) # Overlap with electrons
+    overlap_jets_muon = ak.firsts(Jet).delta_r(ak.firsts(Muon))         # Overlap with muons
+    overlap_jets_fatjet = ak.firsts(Jet).delta_r(ak.firsts(Muon))       # Overlap with fatjet (pendiente)
+    overlap_jets_w = ak.firsts(Jet).delta_r(ak.firsts(Electron)) # Overlap with wjets (pendiente)
+    overlap_jets_top = ak.firsts(Jet).delta_r(ak.firsts(Muon))         # Overlap with topjet (pendiente)
+    
+    
+    
+    selections_jets.add("leading_jets", n_good_jets == 1)
+    selections_jets.add("jets_electron_dr", overlap_jets_electron > 0.4)
+    selections_jets.add("jets_muon_dr", overlap_jets_muon > 0.4)
+    selections_jets.add("jets_fatjet_dr", overlap_jets_fatjet > 0.8)
+    selections_jets.add("jets_wjetM_dr", overlap_jets_w > 0.8)
+    selections_jets.add("jets_TopM_dr", overlap_jets_top > 0.8)
+    
+    selections_jets.add("b_jet_eta", np.abs(Jet.eta) > b_jet_eta)
+
+    selections_jets.add("id_L", Jet.btagDeepFlavB < b_jet_id_L)
+    selections_jets.add("id_M", Jet.btagDeepFlavB < b_jet_id_M)
+    selections_jets.add("id_T", Jet.btagDeepFlavB < b_jet_id_T)
+    
+    # define selection regions for each channel
+    regions = {
+        # all the AK4 jets contain boosted jet        
+        "noCleaned": ["leading_jets", "jets_electron_dr", "jets_muon_dr"],
+        "Cleaned": ["leading_jets", "jets_electron_dr", "jets_muon_dr", "jets_fatjet_dr", "jets_wjetM_dr", "jets_TopM_dr" ],
+        "jetsB_L": ["leading_jets", "jets_electron_dr", "jets_muon_dr", "jets_fatjet_dr", "jets_wjetM_dr", "jets_TopM_dr", "b_jet_eta", "id_L"],
+        "jetsB_M": ["leading_jets", "jets_electron_dr", "jets_muon_dr", "jets_fatjet_dr", "jets_wjetM_dr", "jets_TopM_dr", "b_jet_eta", "id_M"],
+        "jetsB_T": ["leading_jets", "jets_electron_dr", "jets_muon_dr", "jets_fatjet_dr", "jets_wjetM_dr", "jets_TopM_dr", "b_jet_eta", "id_T"],   
+    }
+    
+    #No cleaned
+    Filtered_NC = selections_jets.all(*regions["noCleaned"])                                 
+    selected_idx['jets_noCleaned_against_boostedJets'].append(Filtered_NC)
+    
+    Filtered_C = selections_jets.all(*regions["Cleaned"])                                 
+    selected_idx['jets_cleaned'].append(Filtered_C)
+    
+    Filtered_L = selections_jets.all(*regions["jetsB_L"])                                 
+    selected_idx['jetsB_L'].append(Filtered_L)
+    
+    Filtered_M = selections_jets.all(*regions["jetsB_M"])                                 
+    selected_idx['jetsB_M'].append(Filtered_M)
+    
+    Filtered_T = selections_jets.all(*regions["jetsB_T"])                                 
+    selected_idx['jetsB_T'].append(Filtered_T)
+
+
+
