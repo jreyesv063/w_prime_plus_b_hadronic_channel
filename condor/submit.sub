@@ -1,0 +1,8 @@
+executable            = DIRECTORY/PREFIX.sh
+arguments             = $(ClusterId)$(ProcId)
+output                = DIRECTORY/logs/PREFIX.$(ClusterId).$(ProcId).out
+error                 = DIRECTORY/logs/PREFIX.$(ClusterId).$(ProcId).err
+log                   = DIRECTORY/logs/PREFIX.$(ClusterId).$(ProcId).log
+
++SingularityImage = "/cvmfs/unpacked.cern.ch/registry.hub.docker.com/coffeateam/coffea-dask:latest"
+queue 1

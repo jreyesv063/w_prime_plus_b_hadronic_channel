@@ -1,7 +1,0 @@
-Main json files:
-
-    - DAS_xsec
-    - btagWPs: B-Jet tagging.
-    - Luminosity
-    - Met filters.
-    - Triggers.

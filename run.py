@@ -1,23 +1,21 @@
 import json
+import time
 import dask     
 import pickle
 import argparse
+import numpy as np
+import datetime
 from pathlib import Path
 from coffea import processor
-from datetime import datetime
 from dask.distributed import Client
+from humanfriendly import format_timespan
 from distributed.diagnostics.plugin import UploadDirectory
-from wprime_plus_b.processors.candle_processor import CandleProcessor
-from wprime_plus_b.processors.signal_processor import SignalRegionProcessor
-from wprime_plus_b.processors.ttbar_cr1_processor import TTbarCR1Processor
-from wprime_plus_b.processors.ttbar_cr2_processor import TTbarCR2Processor
-from wprime_plus_b.processors.btag_efficiency_processor import BTagEfficiencyProcessor
-from wprime_plus_b.processors.trigger_efficiency_processor import TriggerEfficiencyProcessor
-from wprime_plus_b.processors.cr1_skimmer import TTbarCR1Skimmer
-from wprime_plus_b.processors.cr2_skimmer import TTbarCR2Skimmer
-from wprime_plus_b.processors.ztoll_skimmer import ZToLLSkimmer
+from wprime_plus_b.processors.ttbar_analysis import TtbarAnalysis
+from wprime_plus_b.processors.ttbar_hadronic import TtbarAnalysis_h
+
 
 def main(args):
+    np.seterr(divide="ignore", invalid="ignore")
     # load and process filesets
     fileset = {}
     with open(args.fileset, "r") as handle:
@@ -26,25 +24,30 @@ def main(args):
         if args.nfiles != -1:
             val = val[: args.nfiles]
         fileset[sample] = [f"root://{args.redirector}/" + file for file in val]
+
     # define processors
     processors = {
-        "ttbar_cr1": TTbarCR1Processor,
-        "ttbar_cr2": TTbarCR2Processor,
-        "ttbar_cr1_skimmer": TTbarCR1Skimmer,
-        "ttbar_cr2_skimmer": TTbarCR2Skimmer,
-        "ztoll": ZToLLSkimmer,
-        "candle": CandleProcessor,
-        "trigger": TriggerEfficiencyProcessor,
-        "signal": SignalRegionProcessor,
-        "btag_eff": BTagEfficiencyProcessor,
+        "ttbar": TtbarAnalysis,
+        "ttbar_h": TtbarAnalysis_h
     }
     processor_kwargs = {
         "year": args.year,
         "yearmod": args.yearmod,
         "channel": args.channel,
+        "lepton_flavor": args.lepton_flavor,
+        "syst": args.syst,
+        "output_type": args.output_type,
     }
-    if args.processor == "btag_eff":
+    if args.processor in ["ztoll", "btag_eff", "qcd"]:
         del processor_kwargs["channel"]
+        del processor_kwargs["syst"]
+        del processor_kwargs["output_type"]
+    if args.processor == "btag_eff":
+        del processor_kwargs["lepton_flavor"]
+    if args.processor == "ttbar_h":
+        del processor_kwargs["channel"]
+        del processor_kwargs["lepton_flavor"]
+
     # define executors
     executors = {
         "iterative": processor.iterative_executor,
@@ -58,8 +61,10 @@ def main(args):
         executor_args.update({"workers": args.workers})
     if args.executor == "dask":
         client = Client(args.client)
+        print(f"client: {args.client}")
         executor_args.update({"client": client})
         # upload local directory to dask workers
+        print(f"trying to upload {Path.cwd()} directory")
         try:
             client.register_worker_plugin(
                 UploadDirectory(f"{Path.cwd()}", restart=True, update_path=True),
@@ -68,7 +73,9 @@ def main(args):
             print(f"Uploaded {Path.cwd()} succesfully")
         except OSError:
             print("Failed to upload the directory")
+            
     # run processor
+    t0 = time.monotonic()
     out = processor.run_uproot_job(
         fileset,
         treename="Events",
@@ -76,27 +83,81 @@ def main(args):
         executor=executors[args.executor],
         executor_args=executor_args,
     )
-    # save output
-    date = datetime.today().strftime("%Y-%m-%d")
-    output_path = Path(
+    exec_time = format_timespan(time.monotonic() - t0)
+    
+    # get metadata
+    metadata = {"walltime": exec_time}
+    metadata.update({'events_before': float(out["metadata"]['events_before'])})
+    metadata.update({'events_after': float(out["metadata"]['events_after'])})
+    if "sumw" in out["metadata"]:
+        metadata.update({'sumw': float(out["metadata"]['sumw'])})
+    metadata.update({"fileset": fileset[sample]})
+    
+    # save args to metadata
+    args_dict = vars(args).copy()
+    del args_dict["fileset"]
+    if args.processor in ["ztoll", "btag_eff"]:
+        del args_dict["channel"]
+    if args.processor == "btag_eff":
+        del args_dict["lepton_flavor"]
+    metadata.update(args_dict)
+    
+    # drop metadata from output
+    del out["metadata"]
+    
+    # define output and metadata paths
+    date = datetime.datetime.today().strftime("%Y-%m-%d")
+    base_path = Path(
         args.output_location
         + "/"
         + args.tag
         + "/"
+        + args.processor
+        + "/"
         + date
         + "/"
-        + args.processor
+    )
+    ttbar_output_path = Path(
+        str(base_path)
+        + "/"
+        + args.channel 
         + "/"
         + args.year
         + "/"
-        + args.channel
+        + args.lepton_flavor
     )
-    if not output_path.exists():
-        output_path.mkdir(parents=True)
-    with open(f"{str(output_path)}/{sample}.pkl", "wb") as handle:
+    other_output_path = Path(
+        str(base_path)
+        + "/"
+        + args.year
+        + "/"
+        + args.lepton_flavor
+    )
+    ttbar_h_output_path = Path(
+        str(base_path)
+        + "/"
+        + args.year
+    )
+    output_path = {
+        "ttbar": ttbar_output_path,
+        "ztoll": other_output_path,
+        "qcd": other_output_path,
+        "ttbar_h": ttbar_h_output_path
+    }
+    # save output
+    if not output_path[args.processor].exists():
+        output_path[args.processor].mkdir(parents=True)
+    with open(f"{str(output_path[args.processor])}/{sample}.pkl", "wb") as handle:
         pickle.dump(out, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        
+    # save metadata
+    metadata_path = Path(f"{str(output_path[args.processor])}/metadata")
+    if not metadata_path.exists():
+        metadata_path.mkdir(parents=True)
+    with open(f"{metadata_path}/{sample}_metadata.json", "w") as f:
+        f.write(json.dumps(metadata))
 
-
+        
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -117,8 +178,15 @@ if __name__ == "__main__":
         "--channel",
         dest="channel",
         type=str,
-        default="ele",
-        help="lepton channel to be processed {'mu', 'ele'}",
+        default="2b1l",
+        help="channel to be processed {'2b1l', '1b1e1mu'}",
+    )
+    parser.add_argument(
+        "--lepton_flavor",
+        dest="lepton_flavor",
+        type=str,
+        default="mu",
+        help="lepton flavor to be processed {'mu', 'ele'}",
     )
     parser.add_argument("--year", dest="year", type=str, default="2017", help="year")
     parser.add_argument(
@@ -174,6 +242,27 @@ if __name__ == "__main__":
         dest="client",
         type=str,
         help="dask client to use with dask executor on coffea-casa",
+    )
+    parser.add_argument(
+        "--chunksize",
+        dest="chunksize",
+        type=int,
+        default=50000,
+        help="number of chunks to process",
+    )
+    parser.add_argument(
+        "--output_type",
+        dest="output_type",
+        type=str,
+        default="hist",
+        help="type of output {hist, array}",
+    )
+    parser.add_argument(
+        "--syst",
+        dest="syst",
+        type=str,
+        default="nominal",
+        help="systematic to apply {'nominal', 'jet', 'met', 'full'}",
     )
     args = parser.parse_args()
     main(args)
