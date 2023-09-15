@@ -13,7 +13,11 @@ https://indico.cern.ch/event/608530/contributions/2464546/attachments/1416703/21
 
 """
 
-def select_good_Fatjets(fatjets, year="2017", working_point="T"):
+def select_good_Fatjets(
+    events: NanoEventsArray, 
+    year="2017", 
+    working_point="T") -> ak.highlevel.Array:
+    
     """
     ak8 PFJets with Puppi and JECs applied, after pT > 175 GeV are stored
     
@@ -21,22 +25,22 @@ def select_good_Fatjets(fatjets, year="2017", working_point="T"):
     # Wps top tagger, jet_id and jet_eta
     with open("wprime_plus_b/jsons/topWps.json", "r") as f: 
         Wps = json.load(f)
-    """
-    with importlib.resources.open_text("wprime_plus_b.data", "topWPs.json") as file:
-        Wps = json.load(file)
-    """  
+ 
     pNet_id = Wps[year]["TvsQCD"][working_point]                      
     jet_id = Wps[year]['jet_id']  
     
     return (
-                (fatjets.pt >= 300)
-                & (np.abs(fatjets.eta) <= 2.4)
-                & (fatjets.particleNet_TvsQCD >= pNet_id)   # Top vs QCD (tight)
-                & (fatjets.jetId >= jet_id)                 # tight ID
+                (events.FatJet.pt >= 300)
+                & (np.abs(events.FatJet.eta) <= 2.4)
+                & (events.FatJet.particleNet_TvsQCD >= pNet_id)   # Top vs QCD (tight)
+                & (events.FatJet.jetId >= jet_id)                 # tight ID
             )
   
 
-def select_good_Wjets(fatjets, year="2017", working_point="T"):
+def select_good_Wjets(
+    events: NanoEventsArray, 
+    year="2017", 
+    working_point="T") -> ak.highlevel.Array:
     """
     ak8 PFJets with Puppi and JECs applied, after pT > 175 GeV are stored
     
@@ -48,17 +52,19 @@ def select_good_Wjets(fatjets, year="2017", working_point="T"):
     pNet_id = Wps[year]["WvsQCD"][working_point]                      
     jet_id = Wps[year]['jet_id']  
     
+        
     return (
-                (fatjets.pt >= 200)
-                & (np.abs(fatjets.eta) <= 2.4)
-                & (fatjets.particleNet_WvsQCD >= pNet_id)   # W vs QCD (tight) 
-                & (fatjets.jetId >= jet_id)   
-
+                (events.FatJet.pt >= 200)
+                & (np.abs(events.FatJet.eta) <= 2.4)
+                & (events.FatJet.particleNet_WvsQCD >= pNet_id)   # W vs QCD (tight) 
+                & (events.FatJet.jetId >= jet_id)   
             )
    
 
     
-def select_good_jets(jets: JetArray, year="2017"):
+def select_good_jets(
+    jets, 
+    year="2017") -> ak.highlevel.Array:
     """
     More information about the Jet flags:
     https://twiki.cern.ch/twiki/bin/view/CMSPublic/WorkBookNanoAOD
@@ -73,22 +79,19 @@ def select_good_jets(jets: JetArray, year="2017"):
         
     jet_eta = Wps[year]['jet_eta']
     jet_id = Wps[year]['jet_id']
-      
+
     return (
                 (jets.pt >= 30)           
                 & (np.abs(jets.eta) <= jet_eta) 
-                & (jets.jetId >= jet_id)                    #  pass tight and tightLepVeto ID.                
+                & (jets.jetId >= jet_id)                    #  pass tight and tightLepVeto ID.         
                 & (jets.puId == 7)                          #  pass loose, medium, tight ID
             )   
     
 
 def select_good_bjets_prev(
-    events: NanoEventsArray,
+    jets,
     year: str = "2017",
     btag_working_point: str = "M",
-    jet_pt_threshold: int = 20,
-    jet_id: int = 6,
-    jet_pileup_id: int = 7,
 ) -> ak.highlevel.Array:
     """
     Selects and filters 'good' b-jets from a collection of jets based on specified criteria
@@ -129,54 +132,13 @@ def select_good_bjets_prev(
     with importlib.resources.open_text("wprime_plus_b.data", "btagWPs.json") as file:
         btag_threshold = json.load(file)["deepJet"][year][btag_working_point]
 
-    # break up selection for low and high pT jets
-    low_pt_jets_mask = (
-        (events.Jet.pt > jet_pt_threshold)
-        & (events.Jet.pt < 50)
-        & (np.abs(events.Jet.eta) < 2.4)
-        & (events.Jet.jetId == jet_id)
-        & (events.Jet.puId == jet_pileup_id)
-        & (events.Jet.btagDeepFlavB > btag_threshold)
-    )
 
-    high_pt_jets_mask = (
-        (events.Jet.pt >= 50)
-        & (np.abs(events.Jet.eta) < 2.4)
-        & (events.Jet.jetId == jet_id)
-        & (events.Jet.btagDeepFlavB > btag_threshold)
-    )
-
-    return ak.where(
-        (events.Jet.pt > jet_pt_threshold) & (events.Jet.pt < 50),
-        low_pt_jets_mask,
-        high_pt_jets_mask,
-    )
-    
-    
-    
-def select_good_bjets(jets: JetArray, year="2017", working_point="L"):
-    """
-    More information about the Jet flags:
-    https://twiki.cern.ch/twiki/bin/view/CMSPublic/WorkBookNanoAOD
-
-    ak4 jets
-    
-    """    
-    # open and load btagDeepFlavB working point
-    with importlib.resources.open_text("wprime_plus_b.data", "btagWPs.json") as file:
-        btagDeepFlavB = json.load(file)["deepJet"][year][working_point] 
-        
-    # Wps top tagger, jet_id and jet_eta
-    with open("wprime_plus_b/jsons/topWps.json", "r") as f: 
-        Wps = json.load(f)
-   
-    jet_eta = Wps[year]['jet_eta']
-    jet_id = Wps[year]['jet_id']
-    
     return (
-                (jets.pt >= 20)
-                & (np.abs(jets.eta) <= jet_eta)
-                & (jets.jetId >= jet_id)                    #  pass tight and tightLepVeto ID.     
-                & (jets.puId == 7)                          #  pass loose, medium, tight ID
-                & (jets.btagDeepFlavB >= btagDeepFlavB)
-            )
+        (jets.pt > 20)
+        & (np.abs(jets.eta) < 2.4)
+        & (jets.jetId == 6)
+        & (jets.puId == 7)
+        & (jets.btagDeepFlavB > btag_threshold)      
+    )
+    
+    

@@ -67,7 +67,7 @@ class topXfinder:
         #print("Top tagger_mask_I (True): ", ak.sum(mask_scenario_I), mask_scenario_I.ndim, mask_scenario_I[mask_scenario_I == True])
 
         
-        return top_scenario_I, mask_scenario_I, top_I_mass
+        return top_scenario_I, mask_scenario_I, top_I_mass, ak.sum(mask_scenario_I)
     
     
     ######################################
@@ -98,7 +98,7 @@ class topXfinder:
         #print("Top tagger_mask_II (True): ", ak.sum(mask_scenario_II), mask_scenario_II.ndim, mask_scenario_II[mask_scenario_II == True])
         
         
-        return top_scenario_II, mask_scenario_II, top_II_mass
+        return top_scenario_II, mask_scenario_II, top_II_mass, ak.sum(mask_scenario_II)
     
     # ----------------------------------------
     #  Scenario III (W = 1  + b = 1)
@@ -148,7 +148,7 @@ class topXfinder:
 
         #print("Top tagger_mask_III (True): ", ak.sum(mask_scenario_III), mask_scenario_III.ndim, mask_scenario_III[mask_scenario_III == True])
         
-        return top_scenario_III, mask_scenario_III, top_III_mass 
+        return top_scenario_III, mask_scenario_III, top_III_mass, ak.sum(mask_scenario_III) 
     
     
     # ----------------------------------------
@@ -190,7 +190,7 @@ class topXfinder:
 
         #print("Top tagger_mask_IV (True): ", ak.sum(mask_scenario_IV), mask_scenario_IV.ndim, mask_scenario_IV[mask_scenario_IV == True])
         
-        return top_scenario_IV, mask_scenario_IV, top_IV_mass
+        return top_scenario_IV, mask_scenario_IV, top_IV_mass, ak.sum(mask_scenario_IV)
 
     
     
@@ -257,7 +257,7 @@ class topXfinder:
 
         #print("Top tagger_mask_V (True): ", ak.sum(mask_scenario_V), mask_scenario_V.ndim, mask_scenario_V[mask_scenario_V == True])
     
-        return top_scenario_V, mask_scenario_V, top_V_mass
+        return top_scenario_V, mask_scenario_V, top_V_mass, ak.sum(mask_scenario_V)
     
     
         
@@ -352,7 +352,7 @@ class topXfinder:
 
         #print("Top tagger_mask_VI (True): ", ak.sum(mask_scenario_VI), mask_scenario_VI.ndim, mask_scenario_VI[mask_scenario_VI == True])
     
-        return top_scenario_VI, mask_scenario_VI, top_VI_mass   
+        return top_scenario_VI, mask_scenario_VI, top_VI_mass, ak.sum(mask_scenario_VI)   
     
     # ----------------------------------------
     #  Scenario VII (b = 1  + light_jets = 2)
@@ -430,7 +430,7 @@ class topXfinder:
     
         #print("Top tagger_mask_VII (True): ", ak.sum(mask_scenario_VII), mask_scenario_VII.ndim, mask_scenario_VII[mask_scenario_VII == True])
         
-        return top_scenario_VII, mask_scenario_VII, top_VII_mass
+        return top_scenario_VII, mask_scenario_VII, top_VII_mass, ak.sum(mask_scenario_VII)
     
     
     
@@ -531,7 +531,7 @@ class topXfinder:
 
         #print("Top tagger_mask_IX (True): ", ak.sum(mask_scenario_IX), mask_scenario_IX.ndim, mask_scenario_IX[mask_scenario_IX == True])
 
-        return top_scenario_IX, mask_scenario_IX, top_IX_mass
+        return top_scenario_IX, mask_scenario_IX, top_IX_mass, ak.sum(mask_scenario_IX)
     
     ######################################
     #########  >= 5 Jet ##################

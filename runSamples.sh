@@ -6,7 +6,7 @@
 
 # Define las variables con las opciones
 processor="ttbar_h"
-executor="dask"
+executor="futures"
 year="2017"
 nfiles="-1"
 redirector="xcache"
@@ -16,8 +16,23 @@ syst="nominal"
 
 # Array con los nombres de los samples
 samples=(
+
   TTToSemiLeptonic
-  DYJetsToLL_M-50_HT-70to100
+  TTTo2L2Nu
+  TTToHadronic
+  
+  SingleTau
+  
+  ST_s-channel_4f_leptonDecays
+  ST_t-channel_antitop_5f_InclusiveDecays
+  ST_t-channel_top_5f_InclusiveDecays
+  ST_tW_antitop_5f_inclusiveDecays
+  ST_tW_top_5f_inclusiveDecays
+  
+  WW
+  WZ
+  ZZ
+  
   DYJetsToLL_M-50_HT-100to200
   DYJetsToLL_M-50_HT-200to400
   DYJetsToLL_M-50_HT-400to600
@@ -25,13 +40,8 @@ samples=(
   DYJetsToLL_M-50_HT-800to1200
   DYJetsToLL_M-50_HT-1200to2500
   DYJetsToLL_M-50_HT-2500ToInf
-  ST_s-channel_4f_leptonDecays
-  ST_t-channel_antitop_5f_InclusiveDecays
-  ST_t-channel_top_5f_InclusiveDecays
-  ST_tW_antitop_5f_inclusiveDecays
-  ST_tW_top_5f_inclusiveDecays
-  TTTo2L2Nu
-  TTToHadronic
+
+
   WJetsToLNu_HT-100To200
   WJetsToLNu_HT-200To400
   WJetsToLNu_HT-400To600
@@ -39,27 +49,14 @@ samples=(
   WJetsToLNu_HT-800To1200
   WJetsToLNu_HT-1200To2500
   WJetsToLNu_HT-2500ToInf
-  WW
-  WZ
-  ZZ
-  SingleTau
+  
 )
 
 # Loop sobre los samples y ejecutar el comando Python para cada uno de ellos
 for sample in "${samples[@]}"; do
   echo "Ejecutando para el sample: $sample"
   # Establece el valor predeterminado de nsplit
-  nsplit=5
+  nsplit=10
 
-  # Ajusta nsplit según el nombre del sample
-  case "$sample" in
-    DYJets*|WJets*|WW|WZ|ZZ)
-      ;;
-    TTTo*|SingleTau)
-      ;;
-    ST*)
-      ;;
-  esac
-
-  python submit.py --processor "$processor" --executor "$executor" --year "$year" --nfiles "$nfiles" --redirector "$redirector" --tag "$tag" --output_type "$output_type" --syst "$syst" --sample "$sample"
+  python submit.py --processor "$processor" --executor "$executor" --year "$year" --nfiles "$nfiles" --redirector "$redirector" --tag "$tag" --output_type "$output_type" --syst "$syst" --sample "$sample" --nsplit "$nsplit"
 done

@@ -89,6 +89,15 @@ def main(args):
     metadata = {"walltime": exec_time}
     metadata.update({'events_before': float(out["metadata"]['events_before'])})
     metadata.update({'events_after': float(out["metadata"]['events_after'])})
+    metadata.update({'events_case_I': float(out["metadata"]['events_case_I'])})
+    metadata.update({'events_case_II': float(out["metadata"]['events_case_II'])})
+    metadata.update({'events_case_III': float(out["metadata"]['events_case_III'])})
+    metadata.update({'events_case_IV': float(out["metadata"]['events_case_IV'])})
+    metadata.update({'events_case_V': float(out["metadata"]['events_case_V'])})
+    metadata.update({'events_case_VI': float(out["metadata"]['events_case_VI'])})
+    metadata.update({'events_case_VII': float(out["metadata"]['events_case_VII'])})
+    metadata.update({'events_case_IX': float(out["metadata"]['events_case_IX'])})
+    
     if "sumw" in out["metadata"]:
         metadata.update({'sumw': float(out["metadata"]['sumw'])})
     metadata.update({"fileset": fileset[sample]})

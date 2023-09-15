@@ -178,9 +178,16 @@ qcd_lepton_met_hist = hist.Hist(
 )
 
 
-# -------------------------------
-# tt CR: Hadronic channel
-# -------------------------------
+# -------------------------------- #
+# -------------------------------- #
+# -------------------------------- #
+# -------------------------------- #
+#  --- tt CR: Hadronic channel --- #
+# -------------------------------- #
+# -------------------------------- #
+# -------------------------------- #
+# -------------------------------- #
+
 # Tau axes
 tau_pt_axis = hist.axis.Variable(
     edges=[20,40,60,80,100,120,140,160,180,200,240,260,280,300,320,340,360,380,400,420,440,460,480,500],
@@ -229,6 +236,33 @@ b_phi_axis = hist.axis.Regular(
     name="b_phi",
 )
 
+# tau and MET axes
+tau_met_delta_phi_axis = hist.axis.Regular(
+    bins=32,    # each 0.2
+    start=-np.pi,
+    stop=np.pi,
+    name="tau_MET_deltaPhi"
+)    
+tau_met_transverseMass_axis = hist.axis.Variable(
+    edges=[10,20,40,60,80,100,120,140,160,180,200,240,260,280,300,320,340,360,380,400,420,440,460,480,500, 520, 540, 560, 580, 600, 620, 640, 660, 680, 700],
+    name="tau_met_transverseMass",
+)
+
+# tau and b axes
+tau_b_delta_phi_axis = hist.axis.Regular(
+    bins=32,    # each 0.2
+    start=-np.pi,
+    stop=np.pi,
+    name="tau_b_deltaPhi"
+)    
+tau_b_delta_R_axis = hist.axis.Regular(
+    bins=32,    # each 0.2
+    start= 0,
+    stop= 5,
+    name="tau_b_deltaR"
+)
+
+
 # top axes
 top_mrec_axis = hist.axis.Variable(
     edges=[120 ,130, 140, 150, 160, 170, 180, 190, 200, 210, 220],
@@ -239,34 +273,52 @@ top_mrec_axis = hist.axis.Variable(
 # tau histogram
 ttbar_h_tau_hist = hist.Hist(
     dataset_axis,              # "dataset"
-    tau_pt_axis,            # "tau_pt"
-    tau_eta_axis,           # "tau_eta"
-    tau_phi_axis,           # "tau_phi"
+    tau_pt_axis,               # "tau_pt"
+    tau_eta_axis,              # "tau_eta"
+    tau_phi_axis,              # "tau_phi"
     syst_axis,                 # "variation"
     hist.storage.Weight(),
 )
 
 ttbar_h_met_hist = hist.Hist(
     dataset_axis,              # "dataset"
-    met_pt_axis,            # "met_pt"
-    met_phi_axis,           # "met_phi"
+    met_pt_axis,               # "met_pt"
+    met_phi_axis,              # "met_phi"
     syst_axis,                 # "variation"
     hist.storage.Weight(),
 )
 
 ttbar_h_b_hist = hist.Hist(
     dataset_axis,              # "dataset"
-    b_pt_axis,            # "b_pt"
-    b_eta_axis,           # "b_eta"
-    b_phi_axis,           # "b_phi"
+    b_pt_axis,                 # "b_pt"
+    b_eta_axis,                # "b_eta"
+    b_phi_axis,                # "b_phi"
     syst_axis,                 # "variation"
+    hist.storage.Weight(),
+)
+
+# tau + MET histogram
+ttbar_h_tau_met_hist = hist.Hist(
+    dataset_axis,
+    tau_met_delta_phi_axis,      # "tau_MET_deltaPhi"
+    tau_met_transverseMass_axis, # "tau_met_transverseMass"
+    syst_axis,                   # "variation"
+    hist.storage.Weight(),
+)
+
+# tau + b histogram
+ttbar_h_tau_b_hist = hist.Hist(
+    dataset_axis,
+    tau_b_delta_phi_axis,     # "tau_b_deltaPhi"
+    tau_b_delta_R_axis,       # "tau_b_deltaR"
+    syst_axis,                # "variation"
     hist.storage.Weight(),
 )
 
 
 ttbar_h_top_hist = hist.Hist(
     dataset_axis,              # "dataset"
-    top_mrec_axis,            # "top_mrec"
+    top_mrec_axis,             # "top_mrec"
     syst_axis,                 # "variation"
     hist.storage.Weight(),
 )

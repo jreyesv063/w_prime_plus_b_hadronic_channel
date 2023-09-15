@@ -25,7 +25,6 @@ from wprime_plus_b.selections.ttbar.jet_selection_hA import (
     select_good_Fatjets,
     select_good_Wjets,
     select_good_jets,
-    select_good_bjets,
     select_good_bjets_prev 
 )
 from wprime_plus_b.selections.ttbar.lepton_selection_hA import (
@@ -42,7 +41,7 @@ class TtbarAnalysis_h(processor.ProcessorABC):
     def __init__(
         self,
         year: str = "2017",
-        yearmod: str = "",
+        yearmod: str = " ",
         btag_wp: str = "L",
         TvsQCD: str = "T",
         WvsQCD: str = "T",
@@ -64,7 +63,9 @@ class TtbarAnalysis_h(processor.ProcessorABC):
             "tau_kin": histograms.ttbar_h_tau_hist,
             "met_kin": histograms.ttbar_h_met_hist,
             "b_kin": histograms.ttbar_h_b_hist,
-#            "top_kin": histograms.ttbar_h_top_hist
+            "tau_met_kin": histograms.ttbar_h_tau_met_hist,
+            "tau_b_kin": histograms.ttbar_h_tau_b_hist,
+            "top_mass": histograms.ttbar_h_top_hist
         }
 
 
@@ -118,46 +119,49 @@ class TtbarAnalysis_h(processor.ProcessorABC):
                 syst_variations.extend(jet_jer_syst_variations)
                 syst_variations.extend(met_obj_syst_variations)
                 
-        for syst_var in syst_variations:                
-           # ------------------
+        for syst_var in syst_variations:
+            # ------------------
+            # event preselection
             # leptons
-            # -------------------
-            # select good electrons
-            good_electrons = select_good_electrons(events)
-            electrons = events.Electron.mask[good_electrons]
-
-            # select good muons
-            good_muons = (select_good_muons(events) 
-                        & delta_r_mask(events.Muon, electrons, threshold=0.4)
-            )
-            muons = events.Muon.mask[good_muons]
-
+            # ------------------
+            good_electrons = (select_good_electrons(events))
+            electrons = events.Electron[good_electrons]
+            
+            good_muons = (select_good_muons(events) &
+                         delta_r_mask(events.Muon, electrons, threshold=0.4))
+            muons = events.Muon[good_muons]
+            
             # select good taus
             good_taus = (select_good_taus(events)
                         & (delta_r_mask(events.Tau, electrons, threshold=0.4))
                         & (delta_r_mask(events.Tau, muons, threshold=0.4))
             )
-            taus = events.Tau.mask[good_taus]
+            taus = events.Tau[good_taus]
             
-       
+            
             # ------------------
             # Fatjets
             # -------------------            
             # select good Fatjets
-            good_fatjets = (select_good_Fatjets(events.FatJet, self._year + self._yearmod, working_point=self._TvsQCD)
+            good_fatjets = (select_good_Fatjets(events, 
+                                                self._year + self._yearmod,           
+                                                working_point=self._TvsQCD)
                             & (delta_r_mask(events.FatJet, electrons, threshold=0.4))
                             & (delta_r_mask(events.FatJet, muons, threshold=0.4))
             )
-            fatjets = events.FatJet.mask[good_fatjets]
+            fatjets = events.FatJet[good_fatjets]
 
             # select good W jets
-            good_wjets = (select_good_Wjets(events.FatJet, self._year + self._yearmod, working_point=self._WvsQCD)
+            good_wjets = (select_good_Wjets(events, 
+                                            self._year + self._yearmod, 
+                                            working_point=self._WvsQCD)
                             & (delta_r_mask(events.FatJet, electrons, threshold=0.4))
                             & (delta_r_mask(events.FatJet, muons, threshold=0.4))
                             & (delta_r_mask(events.FatJet, fatjets, threshold=0.8))
                          )
-            wjets = events.FatJet.mask[good_wjets]
-                      
+            wjets = events.FatJet[good_wjets]
+            
+ 
             # ------------------
             # jets
             # -------------------
@@ -182,42 +186,30 @@ class TtbarAnalysis_h(processor.ProcessorABC):
                     met = met.MET_UnclusteredEnergy.down
             else:
                 corrected_jets, met = events.Jet, events.MET
+                
 
             # select good jets
-            good_jets = (select_good_jets(corrected_jets, self._year)
-                            & (delta_r_mask(corrected_jets, electrons, threshold=0.4))
-                            & (delta_r_mask(corrected_jets, muons, threshold=0.4))
-                            & (delta_r_mask(corrected_jets, fatjets, threshold=0.8))
-                            & (delta_r_mask(corrected_jets, wjets, threshold=0.8))
+            good_jets = (select_good_jets(corrected_jets, 
+                                          self._year + self._yearmod)
+                            & (delta_r_mask(events.Jet, electrons, threshold=0.4))
+                            & (delta_r_mask(events.Jet, muons, threshold=0.4))
+                            & (delta_r_mask(events.Jet, fatjets, threshold=0.8))
+                            & (delta_r_mask(events.Jet, wjets, threshold=0.8))
             )    
-            jets = corrected_jets.mask[good_jets]
-                
-                
-            good_bjets = select_good_bjets_prev(
-                events=events,
-                year=self._year,
-                btag_working_point= "M",
-                jet_pt_threshold= 20,
-                jet_id= 6,
-                jet_pileup_id= 7
-            )
-            good_bjets = (
-                good_bjets
-                & (delta_r_mask(corrected_jets, electrons, threshold=0.4))
-                & (delta_r_mask(corrected_jets, muons, threshold=0.4))
-            )
-            bjets = corrected_jets[good_bjets]
-                
-            """
+            jets = events.Jet[good_jets]
+            
+
             # select good bjets
-            good_bjets = (select_good_bjets(corrected_jets, year=self._year, working_point= self._btag_wp)
-                            & (delta_r_mask(corrected_jets, electrons, threshold=0.4))
-                            & (delta_r_mask(corrected_jets, muons, threshold=0.4))
-                            & (delta_r_mask(corrected_jets, fatjets, threshold=0.8))
-                            & (delta_r_mask(corrected_jets, wjets, threshold=0.8))
-            )
-            bjets = corrected_jets.mask[good_bjets]
-            """
+            good_bjets = (select_good_bjets_prev(corrected_jets, 
+                                          self._year + self._yearmod,
+                                           "M")
+                            & (delta_r_mask(events.Jet, electrons, threshold=0.4))
+                            & (delta_r_mask(events.Jet, muons, threshold=0.4))
+                            & (delta_r_mask(events.Jet, fatjets, threshold=0.8))
+                            & (delta_r_mask(events.Jet, wjets, threshold=0.8))
+                            & (delta_r_mask(events.Jet, jets, threshold=0.4))
+            )    
+            bjets = events.Jet[good_bjets]
             
             
             # apply MET phi corrections
@@ -229,16 +221,15 @@ class TtbarAnalysis_h(processor.ProcessorABC):
                 year=self._year,
                 year_mod=self._yearmod,
             )
-            met["pt"], met["phi"] = met_pt, met_phi                
-                
-
+            met["pt"], met["phi"] = met_pt, met_phi  
+ 
             # ---------------
             # event selection
             # ---------------
             # make a PackedSelection object to store selection masks
-            self.selections = PackedSelection()            
+            self.selections = PackedSelection()   
 
-           # add luminosity calibration mask (only to data)
+            # add luminosity calibration mask (only to data)
             with importlib.resources.path(
                 "wprime_plus_b.data", "lumi_masks.pkl"
             ) as path:
@@ -250,8 +241,10 @@ class TtbarAnalysis_h(processor.ProcessorABC):
                 )
             else:
                 lumi_mask = np.ones(len(events), dtype="bool")
+            
             self.selections.add("lumi", lumi_mask)
-
+            
+            
             # add lepton triggers masks
             with importlib.resources.path(
                 "wprime_plus_b.data", "triggers.json"
@@ -263,11 +256,12 @@ class TtbarAnalysis_h(processor.ProcessorABC):
             for ch in ["tau"]: 
                 trigger[ch] = np.zeros(nevents, dtype="bool")
                 for t in self._triggers[ch]:
+                    #print(t)
                     if t in events.HLT.fields:
                         trigger[ch] = trigger[ch] | events.HLT[t]
                         
             self.selections.add("trigger_tau", trigger["tau"])  
-
+            
             
             # add MET filters mask
             # open and load met filters
@@ -278,7 +272,6 @@ class TtbarAnalysis_h(processor.ProcessorABC):
                     self._metfilters = json.load(handle)[self._year]
             metfilters = np.ones(nevents, dtype="bool")
             metfilterkey = "mc" if self.is_mc else "data"
-            
             for mf in self._metfilters[metfilterkey]:
                 if mf in events.Flag.fields:
                     metfilters = metfilters & events.Flag[mf]
@@ -287,93 +280,97 @@ class TtbarAnalysis_h(processor.ProcessorABC):
             
             # check that there be a minimum MET greater than 250 GeV
             self.selections.add("met_pt", met.pt > 250)
-            
+
             # add number of leptons and jets
             self.selections.add("electron_veto", ak.num(electrons) == 0)
             self.selections.add("muon_veto", ak.num(muons) == 0)
             self.selections.add("one_tau", ak.num(taus) == 1)
-            
-            # add number of bjets
-            self.selections.add("one_bjet", ak.num(bjets) == 1)
+            one_or_two_bjets = topTagger_mask(ak.num(bjets) == 1, ak.num(bjets) == 2)
+            self.selections.add("2or1bjets", one_or_two_bjets)
 
-            
+            # define selection regions for each channel
             region_selection = {
-                "tt_tTauNuB": [
-                                "lumi",
-                                "metfilters",
-                                "trigger_tau",
-                                "muon_veto",
-                                "electron_veto",
-                                "one_tau",
-                                "met_pt"
-                ]
-            }            
+                    "tt_CR": [
+                        "lumi",
+                        "metfilters",
+                        "trigger_tau",
+                        "muon_veto",
+                        "electron_veto",
+                        "one_tau",
+                        "met_pt",
+                        "2or1bjets",
+                    ]
+            }
             
             # ---------------
             # event variables
             # ---------------
-            region_selection =  self.selections.all(*region_selection["tt_tTauNuB"])
+            region_selection =  self.selections.all(*region_selection["tt_CR"])
             
             # if there are no events left after selection cuts continue to the next .root file
             nevents_after = ak.sum(region_selection)
-    
-        
+            
+
             if nevents_after > 0:
                 # select region objects
-                preselection_electrons = electrons[region_selection]
-                preselection_muons = muons[region_selection]
-                preselection_taus = taus[region_selection]
-                preselection_met = met[region_selection]
-                preselection_fatjets = fatjets[region_selection]
-                preselection_jets = jets[region_selection]
-                preselection_bjets = bjets[region_selection]
-                preselection_wjets = wjets[region_selection]
-      
-                # -----------------
-                # Top Tagger
-                # resolve, unresolve, partially_resolve
-                # -----------------
-                self.b_top_selection = PackedSelection()  # We will store all the mask used.
-                               
+                region_bjets = bjets[region_selection]
+                region_taus = taus[region_selection]
+                region_met = met[region_selection]
+                
+                region_fatjets = fatjets[region_selection]
+                region_jets = jets[region_selection]
+                region_wjets = wjets[region_selection]
+                
+                # -------------------------------------------------------
+                # -- Top Tagger: resolve, unresolve, partially_resolve --
+                # -------------------------------------------------------
+                
+                self.topXfinder = PackedSelection()  # We will store all the mask used.
+                
                 top_pdg, w_pdg = pdg_masses()
                 
                 top_sigma, top_low, top_up, w_sigma, w_low, w_up, chi2 = tagger_constants("hadronic")  
                 
                 # Object and cases
                 topX = topXfinder(self._year, self._yearmod, self._btag_wp) 
-                
-                top_I, mask_I, mass_I = topX.Scenario_I(preselection_fatjets, top_low, top_up)
+
+                top_I, mask_I, mass_I, nevents_caseI = topX.Scenario_I(region_fatjets, 
+                                                                       top_low, top_up)
 
                 
-                top_II, mask_II, mass_II = topX.Scenario_II(preselection_fatjets, preselection_bjets, 
-                                                   top_low, top_up)
+                top_II, mask_II, mass_II, nevents_caseII = topX.Scenario_II(region_fatjets, 
+                                                                            region_bjets, 
+                                                                            top_low, top_up)
 
 
-                top_III, mask_III, mass_III = topX.Scenario_III(preselection_wjets, preselection_bjets, 
-                                                      top_sigma, top_low, top_up, top_pdg,
-                                                      w_sigma, w_low, w_up, w_pdg,
-                                                      chi2)
-                            
+                top_III, mask_III, mass_III, nevents_caseIII = topX.Scenario_III(region_wjets,        
+                                                                                 region_bjets, 
+                                                                        top_sigma, top_low, top_up, top_pdg,
+                                                                        w_sigma, w_low, w_up, w_pdg,
+                                                                        chi2)
+                           
+                nevents_caseIV = 0
                 
-                
-                top_V, mask_V, mass_V = topX.Scenario_V(preselection_wjets, preselection_bjets, 
-                                                      top_sigma, top_low, top_up, top_pdg,
-                                                      w_sigma, w_low, w_up, w_pdg,
-                                                      chi2)                                
+                top_V, mask_V, mass_V, nevents_caseV = topX.Scenario_V(region_wjets, 
+                                                                       region_bjets, 
+                                                                      top_sigma, top_low, top_up, top_pdg,
+                                                                      w_sigma, w_low, w_up, w_pdg,
+                                                                      chi2)                                
 
                 
-                top_VI, mask_VI, mass_VI = topX.Scenario_VI(preselection_jets, 
-                                                      top_sigma, top_low, top_up, top_pdg,
-                                                      w_sigma, w_low, w_up, w_pdg,
-                                                      chi2, self._btag_wp)
+                top_VI, mask_VI, mass_VI, nevents_caseVI = topX.Scenario_VI(region_jets, 
+                                                                      top_sigma, top_low, top_up, top_pdg,
+                                                                      w_sigma, w_low, w_up, w_pdg,
+                                                                      chi2, self._btag_wp)
                 
-                               
+                nevents_caseVII = 0             
                                 
-                top_IX, mask_IX, mass_IX = topX.Scenario_IX(preselection_jets, 
-                                  top_sigma, top_low, top_up, top_pdg,
-                                  w_sigma, w_low, w_up, w_pdg,
-                                  chi2, self._btag_wp)
+                top_IX, mask_IX, mass_IX, nevents_caseIX = topX.Scenario_IX(region_jets, 
+                                                                  top_sigma, top_low, top_up, top_pdg,
+                                                                  w_sigma, w_low, w_up, w_pdg,
+                                                                  chi2, self._btag_wp)
                
+                top_mass = mass_I + mass_II + mass_III + mass_V + mass_VI + mass_IX 
                 
                 mask_topXfinder = mask_I
                 mask_topXfinder = topTagger_mask(mask_topXfinder, mask_II)
@@ -383,71 +380,86 @@ class TtbarAnalysis_h(processor.ProcessorABC):
                 mask_topXfinder = topTagger_mask(mask_topXfinder, mask_IX)
                 
                 
-                # Sumamos todas las contribucciones para ver como se recontruyen los tops
-                top_jet_mass = mass_I + mass_II + mass_III + mass_V + mass_VI + mass_IX
-                
-
-                self.b_top_selection.add("topTagger", mask_topXfinder) 
-                self.b_top_selection.add("one_bjet", ak.num(preselection_bjets) == 1) 
-                
+                self.topTagger = PackedSelection()
+                self.topTagger.add("top_tagger", mask_topXfinder) 
                 
                 final_selection = {
-                    "topTagger",
-                    "one_bjet"
+                    "top_tagger",
                 }
                 
                 
-                final_selection =  self.b_top_selection.all(*final_selection)                                
-     
+                final_selection =  self.topTagger.all(*final_selection)
             
-                region_bjets = preselection_bjets[final_selection]
-                region_electrons = preselection_electrons[final_selection]
-                region_muons = preselection_muons[final_selection]
-                region_taus = preselection_taus[final_selection]
-                region_met = preselection_met[final_selection]
-                region_fatjets = preselection_fatjets[final_selection]
-                region_jets = preselection_jets[final_selection]
-                
-  
-#                self.add_feature("top_mrec", top_jet_mass)
-    
-                self.add_feature("tau_pt", region_taus.pt)
-                self.add_feature("tau_eta", region_taus.eta) 
-                self.add_feature("tau_phi", region_taus.phi) 
+                region_bjets = region_bjets[final_selection]
+                region_taus = region_taus[final_selection]
+                region_met = region_met[final_selection]
+                top_mass = top_mass[final_selection]
 
-                
-                self.add_feature("met_pt", region_met.pt)
-                self.add_feature("met_phi", region_met.phi) 
-                
-                self.add_feature("b_pt", region_bjets.pt)
-                self.add_feature("b_eta", region_bjets.eta) 
-                self.add_feature("b_phi", region_bjets.phi) 
-                
-                
-                
-                
                 nevents_after = ak.sum(final_selection)
- 
-                """
-                print("mask_topXfinder: ",ak.sum(mask_topXfinder),  mask_topXfinder.ndim,  mask_topXfinder[mask_topXfinder == True]) 
-                print("Number of events after the cuts: ", nevents_after)
-                print("\n")  
-                """
                 
+                if nevents_after > 0 :
 
-                if nevents_after > 0:
-                    # -------------
-                    # event weights
-                    # -------------
+                    # ----------------------------------------------------
+                    # -------------------- Plots -------------------------
+                    # ----------------------------------------------------
+
+                    tau_MET_dphi = region_taus.delta_phi(region_met) 
+                    tau_met_transMass = np.sqrt(
+                        2.0
+                        * region_taus.pt
+                        * region_met.pt
+                        * (
+                            ak.ones_like(region_met.pt)
+                            - np.cos(region_taus.delta_phi(region_met))
+                        )
+                    )
+
+
+                     # leading bjets
+                    leading_bjets = ak.firsts(region_bjets)
+                    tau_bjet_dr = leading_bjets.delta_r(region_taus)
+                    tau_bjet_dphi = leading_bjets.delta_phi(region_taus)
+
+
+                    # -- Tau histograms --
+                    self.add_feature("tau_pt", region_taus.pt)
+                    self.add_feature("tau_eta", region_taus.eta) 
+                    self.add_feature("tau_phi", region_taus.phi) 
+
+                    # -- MET histograms --
+                    self.add_feature("met_pt", region_met.pt)
+                    self.add_feature("met_phi", region_met.phi) 
+
+                    # -- bjet histograms --
+                    self.add_feature("b_pt", region_bjets.pt)
+                    self.add_feature("b_eta", region_bjets.eta) 
+                    self.add_feature("b_phi", region_bjets.phi) 
+
+                    # -- Tau + MET histograms --
+                    self.add_feature("tau_MET_deltaPhi", region_bjets.pt)
+                    self.add_feature("tau_met_transverseMass", tau_met_transMass)                     
+
+                    # -- Tau + bjet histograms --
+                    self.add_feature("tau_b_deltaPhi", tau_bjet_dphi)
+                    self.add_feature("tau_b_deltaR", tau_bjet_dr) 
+                    
+                    # -- Top histogram --
+                    self.add_feature("top_mrec", top_mass)
+
+
+
+
+                    # ----------------------------------------------------
+                    # ------------------ event weights -------------------
+                    # ----------------------------------------------------
                     weights_container = Weights(
                         len(events[final_selection]), storeIndividual=True
                     )
-
                     if self.is_mc:
                         # add gen weigths
                         gen_weight = events.genWeight[final_selection]
                         weights_container.add("genweight", gen_weight)
-                        
+
                         # add L1prefiring weights
                         if self._year in ("2016", "2017"):
                             if syst_var == "nominal":
@@ -455,28 +467,26 @@ class TtbarAnalysis_h(processor.ProcessorABC):
                                     "L1Prefiring",
                                     weight=events.L1PreFiringWeight.Nom[final_selection],
                                     weightUp=events.L1PreFiringWeight.Up[final_selection],
-                                    weightDown=events.L1PreFiringWeight.Dn[final_selection]
+                                    weightDown=events.L1PreFiringWeight.Dn[final_selection],
                                 )
                             else:
                                 weights_container.add(
                                     "L1Prefiring",
-                                    weight=events.L1PreFiringWeight.Nom[final_selection]
-                                )  
-                                
-                                
+                                    weight=events.L1PreFiringWeight.Nom[region_selection],
+                                )
                         # add pileup reweighting
                         add_pileup_weight(
                             n_true_interactions=ak.to_numpy(
-                            events.Pileup.nPU[final_selection]
+                                events.Pileup.nPU[final_selection]
                             ),
                             weights=weights_container,
                             year=self._year,
                             year_mod=self._yearmod,
                             variation=syst_var,
                         )
-                        
+
                         # b-tagging corrector
-                        njets = 1
+                        njets = 2
                         btag_corrector = BTagCorrector(
                             jets=region_bjets,
                             njets=njets,
@@ -489,11 +499,11 @@ class TtbarAnalysis_h(processor.ProcessorABC):
                             full_run=False,
                             variation=syst_var,
                         )
-                        
                         # add b-tagging weights
                         btag_corrector.add_btag_weights(flavor="bc")
-                        
-                        
+                        btag_corrector.add_btag_weights(flavor="light")
+
+
                         # Tau corrector
                         tau_corrector = TauCorrector(
                                             taus = ak.firsts(region_taus), 
@@ -512,7 +522,8 @@ class TtbarAnalysis_h(processor.ProcessorABC):
                     # ------------------
                     # histogram filling
                     # ------------------
-                    if self._output_type == "hist":
+                    if self._output_type == "hist":       
+
                         # break up the histogram filling for event-wise variations and object-wise variations
                         # apply event-wise variations only for nominal
                         if self.is_mc and syst_var == "nominal":
@@ -522,66 +533,57 @@ class TtbarAnalysis_h(processor.ProcessorABC):
                                 for weight in weights_container.weightStatistics
                                 if "genweight" not in weight
                             ]
-                            
-                        event_weight_syst_variations_up = [
-                            f"{event_weight}Up" for event_weight in event_weights
-                        ]
-                        event_weight_syst_variations_down = [
-                            f"{event_weight}Down" for event_weight in event_weights
-                        ]
-                        
-                        event_weight_syst = ["nominal"]
-                        event_weight_syst.extend(event_weight_syst_variations_up)
-                        event_weight_syst.extend(event_weight_syst_variations_down)
-                                
-                        for variation in event_weight_syst:
-                            # get weight
-                            if variation == "nominal":
-                                syst_weight = weights_container.weight()
-                            else:
-                                a = 3
-                                #syst_weight = weights_container.weight(variation)
+                            event_weight_syst_variations_up = [
+                                f"{event_weight}Up" for event_weight in event_weights
+                            ]
+                            event_weight_syst_variations_down = [
+                                f"{event_weight}Down" for event_weight in event_weights
+                            ]
+                            event_weight_syst = ["nominal"]
+                            event_weight_syst.extend(event_weight_syst_variations_up)
+                            event_weight_syst.extend(event_weight_syst_variations_down)
 
-                            for kin in hist_dict:
-                                
-                                
-                                # get filling arguments
-                                fill_args = {
-                                    feature: normalize(self.features[feature])
-                                    for feature in hist_dict[
-                                        kin
-                                    ].axes.name[:-1]
-                                    if "dataset" not in feature
-                                }
+                            for variation in event_weight_syst:
+                                # get weight
+                                if variation == "nominal":
+                                    syst_weight = weights_container.weight()
+                                else:
+                                    syst_weight = weights_container.weight(variation)
 
+                                for kin in hist_dict:
+                                    # get filling arguments
+                                    fill_args = {
+                                        feature: normalize(self.features[feature])
+                                        for feature in hist_dict[
+                                            kin
+                                        ].axes.name[:-1]
+                                        if "dataset" not in feature
+                                    }
+                                    # fill histograms
+                                    hist_dict[kin].fill(
+                                        **fill_args,
+                                        dataset=dataset,
+                                        variation=variation,
+                                        weight=syst_weight
+                                    )
 
-                                # fill histograms
-                                hist_dict[kin].fill(
-                                    **fill_args,
-                                    dataset=dataset,
-                                    variation=variation,
-                                    weight=syst_weight,
-                                )
-                                                
-                            
-                            # object-wise variations
-                            syst_weight = weights_container.weight()
-                            
-                            for kin in hist_dict:
-                                # get filling arguments
-                                fill_args = {
-                                    feature: normalize(self.features[feature])
-                                    for feature in hist_dict[kin].axes.name[:-1]
-                                    if "dataset" not in feature
-                                }
-                                # fill histograms
-                                hist_dict[kin].fill(
-                                    **fill_args,
-                                    dataset=dataset,
-                                    variation=syst_var,
-                                    weight=syst_weight,
-                                )
-                                    
+                        # object-wise variations
+                        syst_weight = weights_container.weight()
+                        for kin in hist_dict:
+                            # get filling arguments
+                            fill_args = {
+                                feature: normalize(self.features[feature])
+                                for feature in hist_dict[kin].axes.name[:-1]
+                                if "dataset" not in feature
+                            }
+                            # fill histograms
+                            hist_dict[kin].fill(
+                                **fill_args,
+                                dataset=dataset,
+                                variation=syst_var,
+                                weight=syst_weight,
+                            )
+
                     elif self._output_type == "array":
                         self.add_feature("weights", weights_container.weight())
                         self.add_feature("genweights", weights_container.partial_weight("genweight"))
@@ -591,8 +593,18 @@ class TtbarAnalysis_h(processor.ProcessorABC):
                                 normalize(feature_array)
                             )
                             for feature_name, feature_array in self.features.items()
-                        }
+                        }  
 
+
+            else:
+                nevents_caseI  = 0
+                nevents_caseII = 0
+                nevents_caseIII= 0
+                nevents_caseIV = 0
+                nevents_caseV  = 0
+                nevents_caseVI = 0
+                nevents_caseVII= 0
+                nevents_caseIX = 0
                 
         # define output dictionary accumulator
         output = {}
@@ -604,6 +616,14 @@ class TtbarAnalysis_h(processor.ProcessorABC):
         output["metadata"] = {
             "events_before": nevents,
             "events_after": nevents_after,
+            "events_case_I": nevents_caseI,
+            "events_case_II": nevents_caseII,
+            "events_case_III": nevents_caseIII,
+            "events_case_IV": nevents_caseIV,
+            "events_case_V": nevents_caseV,
+            "events_case_VI": nevents_caseVI,
+            "events_case_VII": nevents_caseVII,
+            "events_case_IX": nevents_caseIX
         }
         # save sumw for MC samples
         if self.is_mc:

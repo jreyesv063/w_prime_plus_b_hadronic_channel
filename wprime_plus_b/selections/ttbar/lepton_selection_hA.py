@@ -46,9 +46,9 @@ def select_good_taus(events: NanoEventsArray) -> ak.highlevel.Array:
                 (events.Tau.pt >= 20)
                 & (np.abs(events.Tau.eta) <= 2.3)
                 # github.com/bonanomi/hh2bbww/blob/388efda4e9a6a207d4e983c7f7528acb3a4c374f/hbw/selection/default.py#L295
-                & (events.Tau.idDeepTau2017v2p1VSjet >= 6)  # VVVLoose,VVLoose,VLoose,Loose,Medium,Tight,VTight,VVTight
-                & (events.Tau.idDeepTau2017v2p1VSe >= 5)    # VVVLoose,VVLoose,VLoose,Loose,Medium,Tight,VTight,VVTight
-                & (events.Tau.idDeepTau2017v2p1VSmu >= 4)   # VLoose,Loose,Medium,Tight
+                & (events.Tau.idDeepTau2017v2p1VSjet >= 8)  # VVVLoose,VVLoose,VLoose,Loose,Medium,Tight,VTight,VVTight
+                & (events.Tau.idDeepTau2017v2p1VSe >= 8)    # VVVLoose,VVLoose,VLoose,Loose,Medium,Tight,VTight,VVTight
+                & (events.Tau.idDeepTau2017v2p1VSmu >= 1)   # VLoose,Loose,Medium,Tight
                 & (np.abs(events.Tau.dz) < 0.2)
                 & (events.Tau.idDecayModeNewDMs)    
                 & (
